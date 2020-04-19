@@ -20,8 +20,8 @@ export interface INSCryto {
         atag: string;
     };
     decryptAES256GCM(key: string, cipherb: string, aad: string, iv: string, atag: string): string;
-    encryptRSA(pub_key_pem: string, plainb: string, padding: string): string;
-    decryptRSA(priv_key_pem: string, cipherb: string, padding: string): string;
+    encryptRSA(key_pem: string, plainb: string, padding: string): string;
+    decryptRSA(key_pem: string, cipherb: string, padding: string): string;
     signRSA(priv_key_pem: string, messageb: string, digest_type: string): string;
     verifyRSA(pub_key_pem: string, messageb: string, signatureb: string, digest_type: string): boolean;
     deflate(input: string): string;

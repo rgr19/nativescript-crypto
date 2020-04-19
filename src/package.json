@@ -1,5 +1,5 @@
 {
-  "name": "nativescript-crypto",
+  "name": "rgr-nativescript-crypto",
   "version": "0.9.37",
   "description":
     "Cryptographic functions and utilities using libsodium and native RSA and AES-GCM.",

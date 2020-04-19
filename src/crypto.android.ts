@@ -406,20 +406,19 @@ export class NSCrypto implements INSCryto {
     return Base64.encodeToString(plainb_bytes, Base64.NO_WRAP);
   }
 
-  encryptRSA(pub_key_pem: string, plainb: string, padding: string): string {
+  encryptRSA(key_pem: string, plainb: string, padding: string): string {
     if (Object.keys(this.rsaEncPaddingEncodingType).indexOf(padding) === -1) {
       throw new Error(`encryptRSA padding "${padding}" not found!`);
     }
-    let _pub_key_pem = pub_key_pem.replace(
-      /-----BEGIN PUBLIC KEY-----(\r)*(\n)*/,
-      ''
-    );
-    _pub_key_pem = _pub_key_pem.replace(
-      /(\r)*(\n)*-----END PUBLIC KEY-----(\r)*(\n)*/,
-      ''
-    );
-    const public_key_bytes = Base64.decode(_pub_key_pem, Base64.NO_WRAP);
-    const pub_parameters = PublicKeyFactory.createKey(public_key_bytes);
+    const isPublicKey = this.isPublicKeyRsa(key_pem);
+    let _key_pem = this.removeRSAKeyHeaderFooter(key_pem);
+    const key_bytes = Base64.decode(_key_pem, Base64.NO_WRAP);
+    let parameters;
+    if (isPublicKey) {
+      parameters = PublicKeyFactory.createKey(key_bytes);
+    } else {
+      parameters = PrivateKeyFactory.createKey(key_bytes)
+    }
     const plain_data = Base64.decode(plainb, Base64.NO_WRAP);
     let engine;
     if (padding === 'oaep') {
@@ -432,25 +431,25 @@ export class NSCrypto implements INSCryto {
     } else if (padding === 'pkcs1') {
       engine = new this.rsaEncPaddingEncodingType[padding](new RSAEngine());
     }
-    engine.init(true, pub_parameters);
+    engine.init(true, parameters);
     const encrypted = engine.processBlock(plain_data, 0, plain_data.length);
     return Base64.encodeToString(encrypted, Base64.NO_WRAP);
   }
-  decryptRSA(priv_key_pem: string, cipherb: string, padding: string): string {
+
+  decryptRSA(key_pem: string, cipherb: string, padding: string): string {
     if (Object.keys(this.rsaEncPaddingEncodingType).indexOf(padding) === -1) {
       throw new Error(`decryptRSA padding "${padding}" not found!`);
     }
-    let _priv_key_pem = priv_key_pem.replace(
-      /-----BEGIN RSA PRIVATE KEY-----(\r)*(\n)*/,
-      ''
-    );
-    _priv_key_pem = _priv_key_pem.replace(
-      /(\r)*(\n)*-----END RSA PRIVATE KEY-----(\r)*(\n)*/,
-      ''
-    );
+    const isPublicKey = this.isPublicKeyRsa(key_pem);    
+    let _key_pem = this.removeRSAKeyHeaderFooter(key_pem);
 
-    const private_key_bytes = Base64.decode(_priv_key_pem, Base64.NO_WRAP);
-    const privParameters = PrivateKeyFactory.createKey(private_key_bytes);
+    const key_bytes = Base64.decode(_key_pem, Base64.NO_WRAP);
+    let parameters;
+    if (isPublicKey) {
+      parameters = PublicKeyFactory.createKey(key_bytes);
+    } else {
+      parameters = PrivateKeyFactory.createKey(key_bytes)
+    }
     const cipher_data = Base64.decode(cipherb, Base64.NO_WRAP);
     let engine;
     if (padding === 'oaep') {
@@ -463,10 +462,35 @@ export class NSCrypto implements INSCryto {
     } else if (padding === 'pkcs1') {
       engine = new this.rsaEncPaddingEncodingType[padding](new RSAEngine());
     }
-    engine.init(false, privParameters);
+    engine.init(false, parameters);
     const decrypted = engine.processBlock(cipher_data, 0, cipher_data.length);
     return Base64.encodeToString(decrypted, Base64.NO_WRAP);
   }
+  isPublicKeyRsa(key: string){
+    return key.includes('-----BEGIN PUBLIC KEY-----') && key.includes('-----END PUBLIC KEY-----');
+  }
+
+  isPrivateKeyRsa(key: string) {
+    return key.includes('-----BEGIN RSA PRIVATE KEY-----') && key.includes('-----END RSA PRIVATE KEY-----');
+  }
+
+  removeRSAKeyHeaderFooter(key: string){
+    return key.replace(
+      /-----BEGIN PUBLIC KEY-----(\r)*(\n)*/,
+      ''
+    ).replace(
+      /(\r)*(\n)*-----END PUBLIC KEY-----(\r)*(\n)*/,
+      ''
+    ).replace(
+      /-----BEGIN PUBLIC KEY-----(\r)*(\n)*/,
+      ''
+    ).replace(
+      /(\r)*(\n)*-----END PUBLIC KEY-----(\r)*(\n)*/,
+      ''
+    );
+  }
+
+
   signRSA(priv_key_pem: string, messageb: string, digest_type: string): string {
     if (Object.keys(this.rsaSigDigestType).indexOf(digest_type) === -1) {
       throw new Error(`signRSA digest type "${digest_type}" not found!`);
